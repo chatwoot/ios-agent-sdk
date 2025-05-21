@@ -2,7 +2,7 @@
 
 iOS SDK for Chatwoot
 
----
+
 
 
 
@@ -20,7 +20,7 @@ Import in your app:
 import ChatwootSDK
 ```
 
----
+
 
 ## 📸 Camera and Photo Library Permissions (Required)
 
@@ -41,7 +41,7 @@ To enable photo capture or image upload features in the chat interface, **you mu
    - **NSCameraUsageDescription**: Explains why the app uses the camera (e.g., photo capture for chat).
    - **NSPhotoLibraryUsageDescription**: Explains why the app needs photo library access (e.g., image upload for chat).
 
----
+
 
 ## ⚙️ Configuration Parameters
 
@@ -53,7 +53,6 @@ To enable photo capture or image upload features in the chat interface, **you mu
 | `pubsubToken`   | `String`  | ✅        | Token for real-time updates                 |
 | `websocketUrl`  | `String`  | ✅        | WebSocket URL for real-time communication   |
 
----
 
 ## 🛠️ Example Usage
 
@@ -87,4 +86,3 @@ var body: some View {
 
 The `conversationId` is required to load the chat UI. Make sure you have a valid conversation ID before calling `loadChatUI`.
 
----
