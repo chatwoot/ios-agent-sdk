@@ -4,18 +4,34 @@ iOS SDK for Chatwoot
 
 
 
-
-
 ## 📦 Installation
 
-In `Package.swift`:
+### Option 1: Swift Package Manager (Recommended)
+
+You can integrate the Chatwoot iOS SDK using Swift Package Manager:
+
+1. Open your Xcode project.
+2. Navigate to `File > Add Packages...`
+3. Enter the following URL in the search field:
+   ```
+   https://github.com/chatwoot/agent-ios-sdk.git
+   ```
+4. Select the version you want to use (e.g. from version `1.0.0`) and click **Add Package**.
+
+Then, import the SDK in your code:
+```swift
+import ChatwootSDK
+```
+
+### Option 2: Manual via `Package.swift`
+
+If you're managing dependencies directly with Swift Package Manager via `Package.swift`:
 
 ```swift
 .package(url: "https://github.com/chatwoot/agent-ios-sdk.git", from: "1.0.0")
 ```
 
-Import in your app:
-
+Then, import the SDK where needed:
 ```swift
 import ChatwootSDK
 ```
