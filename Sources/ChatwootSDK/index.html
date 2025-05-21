@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Web Components Test</title>
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      // Initialize with default empty values
+      window.__WOOT_ISOLATED_SHELL__ = true;
+      window.__WOOT_ACCOUNT_ID__ = undefined;
+      window.__WOOT_API_HOST__ = undefined;
+      window.__WOOT_ACCESS_TOKEN__ = undefined;
+      window.__PUBSUB_TOKEN__ = undefined;
+      window.__WEBSOCKET_URL__ = undefined;
+      window.__WOOT_CONVERSATION_ID__ = undefined;
+
+      let configLoaded = false;
+
+      // Listen for configuration updates from native code
+      document.addEventListener("chatwootConfigLoaded", function (event) {
+        const config = event.detail;
+        if (config) {
+          // Make sure we always set values even if they're null or empty
+          window.__WOOT_ACCOUNT_ID__ = config.accountId;
+          window.__WOOT_API_HOST__ = config.apiHost;
+          window.__WOOT_ACCESS_TOKEN__ = config.accessToken;
+          window.__PUBSUB_TOKEN__ = config.pubsubToken;
+          window.__WEBSOCKET_URL__ = config.websocketUrl;
+          window.__WOOT_CONVERSATION_ID__ = config.conversationId;
+          
+          // Set configLoaded to true once we have the required fields
+          configLoaded = !!(window.__WOOT_ACCOUNT_ID__ && 
+                          window.__WOOT_API_HOST__ && 
+                          window.__WOOT_ACCESS_TOKEN__);
+        }
+      });
+
+      window.chatwootCallback = (initFn) => {
+        const loadChatUI = () => {
+          // window.webkit?.messageHandlers?.console?.postMessage({
+          //   type: "log",
+          //   message: `Values: ${JSON.stringify({
+          //     __WOOT_ACCOUNT_ID__: window.__WOOT_ACCOUNT_ID__,
+          //     __WOOT_API_HOST__: window.__WOOT_API_HOST__,
+          //     __WOOT_ACCESS_TOKEN__: window.__WOOT_ACCESS_TOKEN__,
+          //     __PUBSUB_TOKEN__: window.__PUBSUB_TOKEN__,
+          //     __WEBSOCKET_URL__: window.__WEBSOCKET_URL__,
+          //     __WOOT_CONVERSATION_ID__: window.__WOOT_CONVERSATION_ID__,
+          //   })}`,
+          // });
+          
+          if (configLoaded) {
+            initFn();
+          } else {
+            setTimeout(loadChatUI, 100);
+          }
+        };
+        loadChatUI();
+      };
+    </script>
+  </head>
+  <body>
+    <div id="app" dir="ltr">
+      <div class="grid py-20 place-content-center" style="min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            fill="none"
+            stroke="#8E8E93"
+            stroke-width="2"
+            stroke-dasharray="31.415926535897932 31.415926535897932"
+            stroke-dashoffset="0"
+            opacity="0.25"
+          />
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            fill="none"
+            stroke="#8E8E93"
+            stroke-width="2"
+            stroke-dasharray="31.415926535897932 31.415926535897932"
+            stroke-linecap="round"
+          >
+            <animateTransform
+              attributeName="transform"
+              type="rotate"
+              from="0 12 12"
+              to="360 12 12"
+              dur="0.8s"
+              repeatCount="indefinite"
+              easing="ease-in-out"
+            />
+          </circle>
+        </svg>
+      </div>
+    </div>
+    <script src="ui.js"></script>
+  </body>
+</html>
