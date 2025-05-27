@@ -1,37 +1,45 @@
-# 💬 Chatwoot iOS SDK (SwiftUI)
+# 💬 Chatwoot Agent iOS SDK (UIKit)
 
-iOS SDK for Chatwoot
+A lightweight iOS SDK built with **Swift** and **UIKit** to embed a Chatwoot-powered chat interface in any iOS app.
+
+
+
+## 🎯 Objective
+
+- Enable any iOS app to launch a full-featured Chatwoot chat screen
+- Use UIKit for broad iOS compatibility (iOS 12+)
+
+## 🧱 Supported Platforms
+
+- ✅ **Swift 5.7+**
+- ✅ **UIKit Framework**
+- ✅ **iOS 12+** (Broad device compatibility)
+- ✅ **SwiftUI Compatible** (via UIViewControllerRepresentable)
 
 
 
 ## 📦 Installation
 
-### Option 1: Swift Package Manager (Recommended)
+### **Via Swift Package Manager (Remote)**
 
-You can integrate the Chatwoot iOS SDK using Swift Package Manager:
-
-1. Open your Xcode project.
-2. Navigate to `File > Add Packages...`
-3. Enter the following URL in the search field:
-   ```
-   https://github.com/chatwoot/agent-ios-sdk.git
-   ```
-4. Select the version you want to use (e.g. from version `1.0.0`) and click **Add Package**.
-
-Then, import the SDK in your code:
-```swift
-import ChatwootSDK
-```
-
-### Option 2: Manual via `Package.swift`
-
-If you're managing dependencies directly with Swift Package Manager via `Package.swift`:
+In `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/chatwoot/agent-ios-sdk.git", from: "1.0.0")
+.package(url: "https://github.com/chatwoot/ios-agent-sdk", from: "1.0.0")
 ```
 
-Then, import the SDK where needed:
+### **Via Xcode (Local Package)**
+
+1. **Open your Xcode project**
+2. **Add Package Dependency:**
+   - Go to **File → Add Package Dependencies...**
+   - Click **Add Local..** (bottom left)
+   - Navigate to your local `ios-sdk` folder
+   - Select the folder and click **Add Package**
+3. **Configure Package:** Select your target(s) and click **Add Package**
+
+### **Import in your app:**
+
 ```swift
 import ChatwootSDK
 ```
@@ -62,19 +70,23 @@ To enable photo capture or image upload features in the chat interface, **you mu
 ## ⚙️ Configuration Parameters
 
 | Parameter        | Type      | Required | Description                                 |
-|-----------------|-----------|----------|---------------------------------------------|
+|--|-----------|----------|---------------------------------------------|
 | `accountId`     | `Int`     | ✅        | Unique ID for the Chatwoot account          |
 | `apiHost`       | `String`  | ✅        | Chatwoot API host URL                       |
 | `accessToken`   | `String`  | ✅        | Access token for authentication             |
 | `pubsubToken`   | `String`  | ✅        | Token for real-time updates                 |
 | `websocketUrl`  | `String`  | ✅        | WebSocket URL for real-time communication   |
 
+---
 
 ## 🛠️ Example Usage
 
-### Step 1: Set up the SDK
+### UIKit
 
 ```swift
+import ChatwootSDK
+
+// 1. Setup in AppDelegate/SceneDelegate
 ChatwootSDK.setup(ChatwootConfiguration(
     accountId: 1,
     apiHost: "https://your-chatwoot.com",
@@ -82,23 +94,39 @@ ChatwootSDK.setup(ChatwootConfiguration(
     pubsubToken: "YOUR_PUBSUB_TOKEN",
     websocketUrl: "wss://your-chatwoot.com"
 ))
+
+// 2. Present chat modally
+ChatwootSDK.presentChat(from: self, conversationId: 123)
 ```
 
-### Step 2: Show the Chat Interface
+### SwiftUI
 
 ```swift
-@State private var showChat = false
-@State private var conversationId: Int = 123 // Required: conversation ID to load
+import SwiftUI
+import ChatwootSDK
 
-var body: some View {
-    Button("Open Chat") {
-        showChat = true
+struct ChatwootWrapper: UIViewControllerRepresentable {
+    let conversationId: Int
+    
+    func makeUIViewController(context: Context) -> UIViewController {
+        return ChatwootSDK.loadChatUI(conversationId: conversationId)
     }
-    .fullScreenCover(isPresented: $showChat) {
-        ChatwootSDK.loadChatUI(conversationId: conversationId)
+    
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+}
+
+struct ContentView: View {
+    @State private var showChat = false
+    
+    var body: some View {
+        Button("Open Chat") {
+            showChat = true
+        }
+        .fullScreenCover(isPresented: $showChat) {
+            ChatwootWrapper(conversationId: 123)
+        }
     }
 }
 ```
 
-The `conversationId` is required to load the chat UI. Make sure you have a valid conversation ID before calling `loadChatUI`.
-
+The conversationId is required to load the chat UI. Make sure you have a valid conversation ID before calling loadChatUI.
