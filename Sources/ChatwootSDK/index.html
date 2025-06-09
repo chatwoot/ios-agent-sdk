@@ -14,6 +14,8 @@
       window.__PUBSUB_TOKEN__ = undefined;
       window.__WEBSOCKET_URL__ = undefined;
       window.__WOOT_CONVERSATION_ID__ = undefined;
+      window.__DISABLE_EDITOR__ = false;
+      window.__EDITOR_DISABLE_UPLOAD__ = false;
 
       let configLoaded = false;
 
@@ -28,6 +30,8 @@
           window.__PUBSUB_TOKEN__ = config.pubsubToken;
           window.__WEBSOCKET_URL__ = config.websocketUrl;
           window.__WOOT_CONVERSATION_ID__ = config.conversationId;
+          window.__DISABLE_EDITOR__ = config.disableEditor || false;
+          window.__EDITOR_DISABLE_UPLOAD__ = config.editorDisableUpload || false;
           
           // Set configLoaded to true once we have the required fields
           configLoaded = !!(window.__WOOT_ACCOUNT_ID__ && 
@@ -47,6 +51,8 @@
           //     __PUBSUB_TOKEN__: window.__PUBSUB_TOKEN__,
           //     __WEBSOCKET_URL__: window.__WEBSOCKET_URL__,
           //     __WOOT_CONVERSATION_ID__: window.__WOOT_CONVERSATION_ID__,
+          //     __DISABLE_EDITOR__: window.__DISABLE_EDITOR__,
+          //     __EDITOR_DISABLE_UPLOAD__: window.__EDITOR_DISABLE_UPLOAD__,
           //   })}`,
           // });
           
