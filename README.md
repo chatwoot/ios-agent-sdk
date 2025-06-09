@@ -69,64 +69,95 @@ To enable photo capture or image upload features in the chat interface, **you mu
 
 ## ⚙️ Configuration Parameters
 
-| Parameter        | Type      | Required | Description                                 |
-|--|-----------|----------|---------------------------------------------|
-| `accountId`     | `Int`     | ✅        | Unique ID for the Chatwoot account          |
-| `apiHost`       | `String`  | ✅        | Chatwoot API host URL                       |
-| `accessToken`   | `String`  | ✅        | Access token for authentication             |
-| `pubsubToken`   | `String`  | ✅        | Token for real-time updates                 |
-| `websocketUrl`  | `String`  | ✅        | WebSocket URL for real-time communication   |
+| Parameter             | Type      | Required | Default | Description                                 |
+|----------------------|-----------|----------|---------|---------------------------------------------|
+| `accountId`          | `Int`     | ✅        | -       | Unique ID for the Chatwoot account          |
+| `apiHost`            | `String`  | ✅        | -       | Chatwoot API host URL                       |
+| `accessToken`        | `String`  | ✅        | -       | Access token for authentication             |
+| `pubsubToken`        | `String`  | ✅        | -       | Token for real-time updates                 |
+| `websocketUrl`       | `String`  | ✅        | -       | WebSocket URL for real-time communication   |
+| `inboxName`          | `String`  | ✅        | -       | Display name for the inbox/chat channel     |
+| `backArrowIcon`      | `UIImage` | ✅        | -       | Back arrow icon for the header bar          |
+| `connectedIcon`      | `UIImage` | ✅        | -       | Icon displayed when the app is online       |
+| `disconnectedIcon`   | `UIImage` | ✅        | -       | Icon displayed when the app is offline      |
+| `disableEditor`      | `Bool`    | ❌        | `false` | Disables the message editor in chat UI      |
+| `editorDisableUpload`| `Bool`    | ❌        | `false` | Disables file upload in the message editor  |
 
 ---
 
 ## 🛠️ Example Usage
 
-### UIKit
+### Step 1: Set up the SDK
 
 ```swift
-import ChatwootSDK
+// Create mandatory header icons as UIImage objects from SVG files using SVGKit
+let backArrowIcon = createUIImageFromSVG(named: "back_arrow.svg")
+let connectedIcon = createUIImageFromSVG(named: "connected_icon.svg")
+let disconnectedIcon = createUIImageFromSVG(named: "disconnected_icon.svg")
 
-// 1. Setup in AppDelegate/SceneDelegate
 ChatwootSDK.setup(ChatwootConfiguration(
     accountId: 1,
     apiHost: "https://your-chatwoot.com",
     accessToken: "YOUR_ACCESS_TOKEN",
     pubsubToken: "YOUR_PUBSUB_TOKEN",
-    websocketUrl: "wss://your-chatwoot.com"
+    websocketUrl: "wss://your-chatwoot.com",
+    inboxName: "Support",          // Display name for the inbox
+    backArrowIcon: backArrowIcon,  // Required: UIImage object
+    connectedIcon: connectedIcon,  // Required: UIImage object
+    disconnectedIcon: disconnectedIcon, // Required: UIImage object
+    disableEditor: false,        // Optional: disable message editor
+    editorDisableUpload: false   // Optional: disable file uploads
 ))
+```
 
-// 2. Present chat modally
+### Step 2: Show the Chat Interface (Recommended: Always Present from UIKit)
+
+**Present Modally from UIKit (Recommended for Theming):**
+
+```swift
+// UIKit Example
 ChatwootSDK.presentChat(from: self, conversationId: 123)
 ```
 
-### SwiftUI
+**SwiftUI Example (Call UIKit Presentation):**
 
 ```swift
 import SwiftUI
 import ChatwootSDK
 
-struct ChatwootWrapper: UIViewControllerRepresentable {
-    let conversationId: Int
-    
-    func makeUIViewController(context: Context) -> UIViewController {
-        return ChatwootSDK.loadChatUI(conversationId: conversationId)
-    }
-    
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
-}
-
 struct ContentView: View {
-    @State private var showChat = false
+    @State private var conversationId: String = "14635"
     
     var body: some View {
         Button("Open Chat") {
-            showChat = true
+            presentChatFromRoot()
         }
-        .fullScreenCover(isPresented: $showChat) {
-            ChatwootWrapper(conversationId: 123)
+    }
+    
+    private func presentChatFromRoot() {
+        guard let conversationIdInt = Int(conversationId) else { return }
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = windowScene.windows.first?.rootViewController {
+            ChatwootSDK.presentChat(from: rootVC, conversationId: conversationIdInt)
         }
     }
 }
 ```
 
+- This approach ensures correct status bar theming and avoids SwiftUI modal limitations.
+- Do **not** use `.fullScreenCover` or `UIViewControllerRepresentable` for presenting the chat if you want full theming support.
+
+---
+
 The conversationId is required to load the chat UI. Make sure you have a valid conversation ID before calling loadChatUI.
+
+## 🎨 Theme Customization
+
+```swift
+// Set colors using UIColor or hex string
+ChatwootSDK.setThemeColor(.systemBlue)
+ChatwootSDK.setThemeColor("#1f93ff")
+ChatwootSDK.setTextColor(.white)
+```
+
+---

@@ -4,6 +4,9 @@ import ObjectiveC
 #if canImport(UIKit)
 import UIKit
 #endif
+#if canImport(Network)
+import Network
+#endif
 
 #if canImport(UIKit)
 /// A UIKit view controller that wraps a WKWebView to display the Chatwoot chat widget
@@ -20,10 +23,23 @@ public class ChatwootViewController: UIViewController {
     private var headerView: UIView!
     /// Profile label
     private var profileLabel: UILabel!
+    /// Inbox name label
+    private var inboxLabel: UILabel!
     /// Avatar image view
     private var avatarImageView: UIImageView!
     /// Loading indicator
     private var loadingIndicator: UIActivityIndicatorView!
+    /// Theme color for the view
+    private var themeColor: UIColor = .white
+    /// Connection status indicator
+    private var connectionStatusView: UIImageView!
+    /// Current connection status
+    private var isConnected: Bool = true
+    /// Network monitor for connectivity detection
+    #if canImport(Network)
+    private var networkMonitor: NWPathMonitor?
+    private let networkQueue = DispatchQueue(label: "NetworkMonitor")
+    #endif
     
     /// Profile data
     private var profile: ChatwootProfile = ChatwootProfile(name: "Loading...")
@@ -42,41 +58,65 @@ public class ChatwootViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
+    deinit {
+        #if canImport(Network)
+        networkMonitor?.cancel()
+        #endif
+    }
+    
     public override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         loadProfileData()
         loadWebView()
+        setupNetworkMonitoring()
+    }
+    
+    public override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Ensure the status bar style is re-evaluated when the view is about to appear.
+        // This helps if other modals (e.g., image picker) were presented over this view.
+        setNeedsStatusBarAppearanceUpdate()
+    }
+    
+    public override var preferredStatusBarStyle: UIStatusBarStyle {
+        return themeColor.isLight ? .default : .lightContent
     }
     
     /// Sets up the UI components
     private func setupUI() {
-        view.backgroundColor = UIColor.white
+        themeColor = ChatwootSDK.getCurrentThemeColor() // Get theme color from SDK
+        view.backgroundColor = themeColor // Set view background to theme color for consistency during transitions
         
         // Create header view
         headerView = UIView()
-        headerView.backgroundColor = UIColor.white
+        headerView.backgroundColor = themeColor // Use theme color for header
         headerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(headerView)
         
+        // Get text color from SDK (auto-detects or uses custom color)
+        let contentColor: UIColor = ChatwootSDK.getCurrentTextColor()
+        
         // Create close button
         closeButton = UIButton(type: .system)
-        if #available(iOS 13.0, *) {
-            closeButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
-        } else {
-            // For iOS 12, use a simple text-based back button or custom image
-            closeButton.setTitle("‹", for: .normal)
-            closeButton.titleLabel?.font = UIFont.systemFont(ofSize: 20, weight: .medium)
-        }
-        closeButton.tintColor = UIColor.black
+        closeButton.setImage(configuration.backArrowIcon, for: .normal)
+        closeButton.tintColor = contentColor // Use dynamic content color
         closeButton.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(closeButton)
+
+        // Create connection status indicator
+        connectionStatusView = UIImageView()
+        updateConnectionIcon()
+        connectionStatusView.tintColor = contentColor
+        connectionStatusView.contentMode = .scaleAspectFit
+        connectionStatusView.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(connectionStatusView)
         
         // Create avatar image view
         avatarImageView = UIImageView()
         avatarImageView.contentMode = .scaleAspectFill
-        avatarImageView.layer.cornerRadius = 18
+        avatarImageView.layer.cornerRadius = 16
         avatarImageView.layer.masksToBounds = true
         avatarImageView.backgroundColor = UIColor.blue.withAlphaComponent(0.2)
         avatarImageView.translatesAutoresizingMaskIntoConstraints = false
@@ -84,11 +124,19 @@ public class ChatwootViewController: UIViewController {
         
         // Create profile label
         profileLabel = UILabel()
-        profileLabel.font = UIFont.preferredFont(forTextStyle: .headline)
-        profileLabel.textColor = UIColor.black
+        profileLabel.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
+        profileLabel.textColor = contentColor // Use dynamic content color
         profileLabel.text = profile.name
         profileLabel.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(profileLabel)
+
+             // Create inbox label
+        inboxLabel = UILabel()
+        inboxLabel.font = UIFont.systemFont(ofSize: 13, weight: .regular)
+        inboxLabel.textColor = contentColor.withAlphaComponent(0.7) // Use dynamic content color with alpha
+        inboxLabel.text = configuration.inboxName
+        inboxLabel.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(inboxLabel)
         
         // Create loading indicator
         if #available(iOS 13.0, *) {
@@ -141,7 +189,7 @@ public class ChatwootViewController: UIViewController {
         
         // Add separator line
         let separatorView = UIView()
-        separatorView.backgroundColor = UIColor.lightGray
+        separatorView.backgroundColor = contentColor.withAlphaComponent(0.2) // Use dynamic content color with alpha
         separatorView.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(separatorView)
         
@@ -151,29 +199,41 @@ public class ChatwootViewController: UIViewController {
             headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 56),
+            headerView.heightAnchor.constraint(equalToConstant: 64),
             
             // Close button constraints
             closeButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             closeButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
-            closeButton.widthAnchor.constraint(equalToConstant: 32),
-            closeButton.heightAnchor.constraint(equalToConstant: 32),
+            closeButton.widthAnchor.constraint(equalToConstant: 28),
+            closeButton.heightAnchor.constraint(equalToConstant: 28),
+
+            // Connection status indicator constraints
+            connectionStatusView.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            connectionStatusView.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            connectionStatusView.widthAnchor.constraint(equalToConstant: 22),
+            connectionStatusView.heightAnchor.constraint(equalToConstant: 22),
             
             // Avatar constraints
             avatarImageView.leadingAnchor.constraint(equalTo: closeButton.trailingAnchor, constant: 12),
             avatarImageView.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
-            avatarImageView.widthAnchor.constraint(equalToConstant: 36),
-            avatarImageView.heightAnchor.constraint(equalToConstant: 36),
+            avatarImageView.widthAnchor.constraint(equalToConstant: 32),
+            avatarImageView.heightAnchor.constraint(equalToConstant: 32),
             
             // Loading indicator constraints
             loadingIndicator.centerXAnchor.constraint(equalTo: avatarImageView.centerXAnchor),
             loadingIndicator.centerYAnchor.constraint(equalTo: avatarImageView.centerYAnchor),
             
-            // Profile label constraints
+            // Profile label constraints  
             profileLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 12),
-            profileLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
-            profileLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerView.trailingAnchor, constant: -16),
+            profileLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 12),
+            profileLabel.trailingAnchor.constraint(lessThanOrEqualTo: connectionStatusView.leadingAnchor, constant: -12),
             
+             // Inbox label constraints
+            inboxLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 12),
+            inboxLabel.topAnchor.constraint(equalTo: profileLabel.bottomAnchor, constant: 2),
+            inboxLabel.trailingAnchor.constraint(lessThanOrEqualTo: connectionStatusView.leadingAnchor, constant: -12),
+            inboxLabel.bottomAnchor.constraint(lessThanOrEqualTo: headerView.bottomAnchor, constant: -12),
+
             // Separator constraints
             separatorView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor),
             separatorView.trailingAnchor.constraint(equalTo: headerView.trailingAnchor),
@@ -193,7 +253,8 @@ public class ChatwootViewController: UIViewController {
     /// Updates the UI based on current state
     private func updateUI() {
         profileLabel.text = profile.name
-        profileLabel.textColor = isProfileLoading ? UIColor.gray : UIColor.black
+        // profileLabel.textColor is set in setupUI and doesn't need to change based on loading state here
+        // It's now based on themeColor.isLight
         
         if isProfileLoading {
             loadingIndicator.startAnimating()
@@ -227,20 +288,21 @@ public class ChatwootViewController: UIViewController {
     /// Sets initials avatar
     private func setInitialsAvatar() {
         let initials = profile.name.initials
-        let size = CGSize(width: 36, height: 36)
+        let size = CGSize(width: 32, height: 32)
+        let contentColor: UIColor = ChatwootSDK.getCurrentTextColor()
         
         UIGraphicsBeginImageContextWithOptions(size, false, 0)
         let context = UIGraphicsGetCurrentContext()
         
         // Draw background circle
-        UIColor.blue.withAlphaComponent(0.2).setFill()
+        contentColor.withAlphaComponent(0.1).setFill() // Use content color for background
         context?.fillEllipse(in: CGRect(origin: .zero, size: size))
         
         // Draw initials text
-        let font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        let font = UIFont.systemFont(ofSize: 14, weight: .medium)
         let textAttributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: UIColor.blue
+            .foregroundColor: contentColor // Use content color for text
         ]
         
         let textSize = initials.size(withAttributes: textAttributes)
@@ -297,6 +359,36 @@ public class ChatwootViewController: UIViewController {
         }
     }
     
+    /// Sets up network monitoring for connection status
+    private func setupNetworkMonitoring() {
+        #if canImport(Network)
+        guard #available(iOS 12.0, *) else {
+            // For older iOS versions, assume connected
+            return
+        }
+        
+        networkMonitor = NWPathMonitor()
+        networkMonitor?.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                let wasConnected = self?.isConnected ?? true
+                self?.isConnected = path.status == .satisfied
+                
+                // Update icon if connection status changed
+                if wasConnected != self?.isConnected {
+                    self?.updateConnectionIcon()
+                }
+            }
+        }
+        networkMonitor?.start(queue: networkQueue)
+        #endif
+    }
+    
+    /// Updates the connection icon based on current status
+    private func updateConnectionIcon() {
+        let icon = isConnected ? configuration.connectedIcon : configuration.disconnectedIcon
+        connectionStatusView.image = icon
+    }
+    
     /// Handles close button tap
     @objc private func closeButtonTapped() {
         dismiss(animated: true, completion: nil)
@@ -334,6 +426,8 @@ extension ChatwootViewController: WKNavigationDelegate {
             accessToken: '\(configuration.accessToken)',
             pubsubToken: '\(configuration.pubsubToken)',
             websocketUrl: '\(configuration.websocketUrl)',
+            disableEditor: \(configuration.disableEditor ? "true" : "false"),
+            editorDisableUpload: \(configuration.editorDisableUpload ? "true" : "false"),
             \(conversationId != nil ? "conversationId: \(conversationId!)," : "")
         };
         
@@ -343,6 +437,8 @@ extension ChatwootViewController: WKNavigationDelegate {
         window.__WOOT_ACCESS_TOKEN__ = chatwootConfig.accessToken;
         window.__PUBSUB_TOKEN__ = chatwootConfig.pubsubToken;
         window.__WEBSOCKET_URL__ = chatwootConfig.websocketUrl;
+        window.__DISABLE_EDITOR__ = chatwootConfig.disableEditor;
+        window.__EDITOR_DISABLE_UPLOAD__ = chatwootConfig.editorDisableUpload;
         \(conversationId != nil ? "window.__WOOT_CONVERSATION_ID__ = \(conversationId!);" : "")
         
         // Add Chatwoot configuration to window object
@@ -378,6 +474,8 @@ extension ChatwootViewController: WKNavigationDelegate {
                 "accessToken": "\(self.configuration.accessToken)",
                 "pubsubToken": "\(self.configuration.pubsubToken)",
                 "websocketUrl": "\(self.configuration.websocketUrl)",
+                "disableEditor": \(self.configuration.disableEditor ? "true" : "false"),
+                "editorDisableUpload": \(self.configuration.editorDisableUpload ? "true" : "false"),
                 "conversationId": \(self.conversationId != nil ? String(self.conversationId!) : "null")
             }
             """
@@ -392,6 +490,8 @@ extension ChatwootViewController: WKNavigationDelegate {
                 window.__WOOT_ACCESS_TOKEN__ = chatwootConfig.accessToken;
                 window.__PUBSUB_TOKEN__ = chatwootConfig.pubsubToken;
                 window.__WEBSOCKET_URL__ = chatwootConfig.websocketUrl;
+                window.__DISABLE_EDITOR__ = chatwootConfig.disableEditor;
+                window.__EDITOR_DISABLE_UPLOAD__ = chatwootConfig.editorDisableUpload;
                 if (chatwootConfig.conversationId) {
                     window.__WOOT_CONVERSATION_ID__ = chatwootConfig.conversationId;
                 }
@@ -563,4 +663,57 @@ extension String {
         }
     }
 }
+
+#if canImport(UIKit)
+// Extension to determine if a UIColor is light or dark
+extension UIColor {
+    var isLight: Bool {
+        var white: CGFloat = 0
+        getWhite(&white, alpha: nil)
+        return white > 0.5
+    }
+    
+    /// Creates a UIColor from a hex string
+    /// - Parameter hex: Hex color string (supports formats: "#RRGGBB", "#RGB", "RRGGBB", "RGB")
+    convenience init?(hex: String) {
+        var hexString = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Remove the # character if present
+        if hexString.hasPrefix("#") {
+            hexString = String(hexString.dropFirst())
+        }
+        
+        // Parse hex string directly
+        var hexNumber: UInt64 = 0
+        guard Scanner(string: hexString).scanHexInt64(&hexNumber) else {
+            return nil
+        }
+        
+        let length = hexString.count
+        
+        let r, g, b, a: CGFloat
+        switch length {
+        case 3: // RGB
+            r = CGFloat((hexNumber & 0xF00) >> 8) / 15.0
+            g = CGFloat((hexNumber & 0x0F0) >> 4) / 15.0
+            b = CGFloat(hexNumber & 0x00F) / 15.0
+            a = 1.0
+        case 6: // RRGGBB
+            r = CGFloat((hexNumber & 0xFF0000) >> 16) / 255.0
+            g = CGFloat((hexNumber & 0x00FF00) >> 8) / 255.0
+            b = CGFloat(hexNumber & 0x0000FF) / 255.0
+            a = 1.0
+        case 8: // RRGGBBAA
+            r = CGFloat((hexNumber & 0xFF000000) >> 24) / 255.0
+            g = CGFloat((hexNumber & 0x00FF0000) >> 16) / 255.0
+            b = CGFloat((hexNumber & 0x0000FF00) >> 8) / 255.0
+            a = CGFloat(hexNumber & 0x000000FF) / 255.0
+        default:
+            return nil
+        }
+        
+        self.init(red: r, green: g, blue: b, alpha: a)
+    }
+}
+#endif
 #endif
