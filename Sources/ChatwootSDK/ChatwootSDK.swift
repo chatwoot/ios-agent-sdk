@@ -10,6 +10,7 @@ public struct ChatwootConfiguration {
     public let pubsubToken: String
     public let websocketUrl: String
     public let inboxName: String
+    public let inboxNameFontSize: CGFloat
     public let disableEditor: Bool
     public let editorDisableUpload: Bool
     #if canImport(UIKit)
@@ -26,6 +27,7 @@ public struct ChatwootConfiguration {
         pubsubToken: String,
         websocketUrl: String,
         inboxName: String,
+        inboxNameFontSize: CGFloat = 18,
         disableEditor: Bool = false,
         editorDisableUpload: Bool = false,
         backArrowIcon: UIImage,
@@ -38,6 +40,7 @@ public struct ChatwootConfiguration {
         self.pubsubToken = pubsubToken
         self.websocketUrl = websocketUrl
         self.inboxName = inboxName
+        self.inboxNameFontSize = inboxNameFontSize
         self.disableEditor = disableEditor
         self.editorDisableUpload = editorDisableUpload
         self.backArrowIcon = backArrowIcon
@@ -52,6 +55,7 @@ public struct ChatwootConfiguration {
         pubsubToken: String,
         websocketUrl: String,
         inboxName: String,
+        inboxNameFontSize: CGFloat = 18,
         disableEditor: Bool = false,
         editorDisableUpload: Bool = false
     ) {
@@ -61,6 +65,7 @@ public struct ChatwootConfiguration {
         self.pubsubToken = pubsubToken
         self.websocketUrl = websocketUrl
         self.inboxName = inboxName
+        self.inboxNameFontSize = inboxNameFontSize
         self.disableEditor = disableEditor
         self.editorDisableUpload = editorDisableUpload
     }
