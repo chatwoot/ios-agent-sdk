@@ -21,14 +21,8 @@ public class ChatwootViewController: UIViewController {
     private var closeButton: UIButton!
     /// Header view for profile information
     private var headerView: UIView!
-    /// Profile label
-    private var profileLabel: UILabel!
     /// Inbox name label
     private var inboxLabel: UILabel!
-    /// Avatar image view
-    private var avatarImageView: UIImageView!
-    /// Loading indicator
-    private var loadingIndicator: UIActivityIndicatorView!
     /// Theme color for the view
     private var themeColor: UIColor = .white
     /// Connection status indicator
@@ -41,9 +35,6 @@ public class ChatwootViewController: UIViewController {
     private let networkQueue = DispatchQueue(label: "NetworkMonitor")
     #endif
     
-    /// Profile data
-    private var profile: ChatwootProfile = ChatwootProfile(name: "Loading...")
-    private var isProfileLoading: Bool = true
     
     // Private class for bundle reference
     private class BundleClass {}
@@ -67,7 +58,6 @@ public class ChatwootViewController: UIViewController {
     public override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        loadProfileData()
         loadWebView()
         setupNetworkMonitoring()
     }
@@ -113,39 +103,14 @@ public class ChatwootViewController: UIViewController {
         connectionStatusView.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(connectionStatusView)
         
-        // Create avatar image view
-        avatarImageView = UIImageView()
-        avatarImageView.contentMode = .scaleAspectFill
-        avatarImageView.layer.cornerRadius = 16
-        avatarImageView.layer.masksToBounds = true
-        avatarImageView.backgroundColor = UIColor.blue.withAlphaComponent(0.2)
-        avatarImageView.translatesAutoresizingMaskIntoConstraints = false
-        headerView.addSubview(avatarImageView)
-        
-        // Create profile label
-        profileLabel = UILabel()
-        profileLabel.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
-        profileLabel.textColor = contentColor // Use dynamic content color
-        profileLabel.text = profile.name
-        profileLabel.translatesAutoresizingMaskIntoConstraints = false
-        headerView.addSubview(profileLabel)
-
-             // Create inbox label
+        // Create inbox label
         inboxLabel = UILabel()
-        inboxLabel.font = UIFont.systemFont(ofSize: 13, weight: .regular)
-        inboxLabel.textColor = contentColor.withAlphaComponent(0.7) // Use dynamic content color with alpha
+        inboxLabel.font = UIFont.systemFont(ofSize: configuration.inboxNameFontSize, weight: .semibold)
+        inboxLabel.textColor = contentColor
         inboxLabel.text = configuration.inboxName
+        inboxLabel.textAlignment = .center
         inboxLabel.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(inboxLabel)
-        
-        // Create loading indicator
-        if #available(iOS 13.0, *) {
-            loadingIndicator = UIActivityIndicatorView(style: .medium)
-        } else {
-            loadingIndicator = UIActivityIndicatorView(style: .gray)
-        }
-        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
-        avatarImageView.addSubview(loadingIndicator)
         
         // Configure WebView
         let webConfiguration = WKWebViewConfiguration()
@@ -213,26 +178,10 @@ public class ChatwootViewController: UIViewController {
             connectionStatusView.widthAnchor.constraint(equalToConstant: 22),
             connectionStatusView.heightAnchor.constraint(equalToConstant: 22),
             
-            // Avatar constraints
-            avatarImageView.leadingAnchor.constraint(equalTo: closeButton.trailingAnchor, constant: 12),
-            avatarImageView.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
-            avatarImageView.widthAnchor.constraint(equalToConstant: 32),
-            avatarImageView.heightAnchor.constraint(equalToConstant: 32),
-            
-            // Loading indicator constraints
-            loadingIndicator.centerXAnchor.constraint(equalTo: avatarImageView.centerXAnchor),
-            loadingIndicator.centerYAnchor.constraint(equalTo: avatarImageView.centerYAnchor),
-            
-            // Profile label constraints  
-            profileLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 12),
-            profileLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 12),
-            profileLabel.trailingAnchor.constraint(lessThanOrEqualTo: connectionStatusView.leadingAnchor, constant: -12),
-            
-             // Inbox label constraints
-            inboxLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 12),
-            inboxLabel.topAnchor.constraint(equalTo: profileLabel.bottomAnchor, constant: 2),
-            inboxLabel.trailingAnchor.constraint(lessThanOrEqualTo: connectionStatusView.leadingAnchor, constant: -12),
-            inboxLabel.bottomAnchor.constraint(lessThanOrEqualTo: headerView.bottomAnchor, constant: -12),
+            // Inbox label constraints (centered between close button and connection status)
+            inboxLabel.leadingAnchor.constraint(equalTo: closeButton.trailingAnchor, constant: 12),
+            inboxLabel.trailingAnchor.constraint(equalTo: connectionStatusView.leadingAnchor, constant: -12),
+            inboxLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
 
             // Separator constraints
             separatorView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor),
@@ -247,79 +196,10 @@ public class ChatwootViewController: UIViewController {
             webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         
-        updateUI()
     }
     
-    /// Updates the UI based on current state
-    private func updateUI() {
-        profileLabel.text = profile.name
-        // profileLabel.textColor is set in setupUI and doesn't need to change based on loading state here
-        // It's now based on themeColor.isLight
-        
-        if isProfileLoading {
-            loadingIndicator.startAnimating()
-            avatarImageView.image = nil
-        } else {
-            loadingIndicator.stopAnimating()
-            
-            if let avatarUrl = profile.avatarUrl, let url = URL(string: avatarUrl) {
-                loadAvatarImage(from: url)
-            } else {
-                setInitialsAvatar()
-            }
-        }
-    }
     
-    /// Loads avatar image from URL
-    private func loadAvatarImage(from url: URL) {
-        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                guard let self = self,
-                      let data = data,
-                      let image = UIImage(data: data) else { 
-                    self?.setInitialsAvatar()
-                    return 
-                }
-                self.avatarImageView.image = image
-            }
-        }.resume()
-    }
     
-    /// Sets initials avatar
-    private func setInitialsAvatar() {
-        let initials = profile.name.initials
-        let size = CGSize(width: 32, height: 32)
-        let contentColor: UIColor = ChatwootSDK.getCurrentTextColor()
-        
-        UIGraphicsBeginImageContextWithOptions(size, false, 0)
-        let context = UIGraphicsGetCurrentContext()
-        
-        // Draw background circle
-        contentColor.withAlphaComponent(0.1).setFill() // Use content color for background
-        context?.fillEllipse(in: CGRect(origin: .zero, size: size))
-        
-        // Draw initials text
-        let font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        let textAttributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: contentColor // Use content color for text
-        ]
-        
-        let textSize = initials.size(withAttributes: textAttributes)
-        let textRect = CGRect(
-            x: (size.width - textSize.width) / 2,
-            y: (size.height - textSize.height) / 2,
-            width: textSize.width,
-            height: textSize.height
-        )
-        
-        initials.draw(in: textRect, withAttributes: textAttributes)
-        
-        let image = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-        
-        avatarImageView.image = image
-    }
     
     /// Loads the WebView content
     private func loadWebView() {
@@ -335,29 +215,6 @@ public class ChatwootViewController: UIViewController {
         webView.loadHTMLString(htmlContent, baseURL: bundleURL)
     }
     
-    /// Loads profile data from API
-    private func loadProfileData() {
-        ProfileAPI.fetchProfile(
-            baseUrl: configuration.apiHost,
-            token: configuration.accessToken
-        ) { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                
-                switch result {
-                case .success(let fetchedProfile):
-                    self.profile = fetchedProfile
-                    self.isProfileLoading = false
-                case .failure(let error):
-                    print("[Chatwoot] Error loading profile: \(error.localizedDescription)")
-                    self.profile = ChatwootProfile(name: "Chat User")
-                    self.isProfileLoading = false
-                }
-                
-                self.updateUI()
-            }
-        }
-    }
     
     /// Sets up network monitoring for connection status
     private func setupNetworkMonitoring() {

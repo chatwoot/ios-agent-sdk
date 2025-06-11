@@ -77,6 +77,7 @@ To enable photo capture or image upload features in the chat interface, **you mu
 | `pubsubToken`        | `String`  | ✅        | -       | Token for real-time updates                 |
 | `websocketUrl`       | `String`  | ✅        | -       | WebSocket URL for real-time communication   |
 | `inboxName`          | `String`  | ✅        | -       | Display name for the inbox/chat channel     |
+| `inboxNameFontSize`  | `CGFloat` | ❌        | `18`    | Font size for the inbox name in header      |
 | `backArrowIcon`      | `UIImage` | ✅        | -       | Back arrow icon for the header bar          |
 | `connectedIcon`      | `UIImage` | ✅        | -       | Icon displayed when the app is online       |
 | `disconnectedIcon`   | `UIImage` | ✅        | -       | Icon displayed when the app is offline      |
@@ -102,6 +103,7 @@ ChatwootSDK.setup(ChatwootConfiguration(
     pubsubToken: "YOUR_PUBSUB_TOKEN",
     websocketUrl: "wss://your-chatwoot.com",
     inboxName: "Support",          // Display name for the inbox
+    inboxNameFontSize: 20,       // Optional: font size for inbox name (default: 18)
     backArrowIcon: backArrowIcon,  // Required: UIImage object
     connectedIcon: connectedIcon,  // Required: UIImage object
     disconnectedIcon: disconnectedIcon, // Required: UIImage object
